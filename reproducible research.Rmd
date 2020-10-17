@@ -1,0 +1,85 @@
+---
+title: "Reproducible research"
+author: "Renukaneeli"
+date: "10/17/2020"
+output: html_document
+---
+## 1.Code for reading in the dataset and/or processing the data
+
+```{r, echo=TRUE}
+activity <- read.csv("activity.csv")
+activity$date <- as.POSIXct(activity$date)
+weekday <- weekdays(activity$date)
+activity <- cbind(activity,weekday)
+
+summary(activity)
+colnames(activity)
+```
+
+## 2.Histogram of the total number of steps taken each day
+```{r, echo=TRUE}
+activity_total_steps <- with(activity, aggregate(steps, by = list(date), FUN = sum, na.rm = TRUE))
+names(activity_total_steps) <- c("date", "steps")
+hist(activity_total_steps$steps, main = "Total number of steps taken per day", xlab = "Total steps taken per day", col = "green", ylim = c(0,20), breaks = seq(0,25000, by=2500))
+```
+
+## 3.Mean and median number of steps taken each day
+```{r, echo=TRUE}
+mean(activity_total_steps$steps)
+median(activity_total_steps$steps)
+```
+
+## 4.Time series plot of the average number of steps taken
+```{r, echo=TRUE}
+average_daily_activity <- aggregate(activity$steps, by=list(activity$interval), FUN=mean, na.rm=TRUE)
+names(average_daily_activity) <- c("interval", "mean")
+plot(average_daily_activity$interval, average_daily_activity$mean, type = "l", col="darkblue", lwd = 2, xlab="Interval", ylab="Average number of steps", main="Average number of steps per intervals")
+```
+
+## 5.The 5-minute interval that, on average, contains the maximum number of steps
+```{r, echo=TRUE}
+average_daily_activity[which.max(average_daily_activity$mean), ]$interval
+```
+
+## 6.Code to describe and show a strategy for imputing missing data
+
+```{r, echo=TRUE}
+sum(is.na(activity$steps)) 
+```
+
+## 7. Histogram of the total number of steps taken each day after missing values are imputed
+```{r, echo=TRUE}
+
+imputed_steps <- average_daily_activity$mean[match(activity$interval, average_daily_activity$interval)]
+
+activity_imputed <- transform(activity, steps = ifelse(is.na(activity$steps), yes = imputed_steps, no = activity$steps))
+total_steps_imputed <- aggregate(steps ~ date, activity_imputed, sum)
+names(total_steps_imputed) <- c("date", "daily_steps")
+
+hist(total_steps_imputed$daily_steps, col = "darkblue", xlab = "Total steps per day", ylim = c(0,30), main = "Total number of steps taken each day", breaks = seq(0,25000,by=2500))
+```
+
+## 8.Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+```{r, echo=TRUE}
+activity$date <- as.Date(activity$date) 
+activity$datetype <- sapply(activity$date, function(x) {
+        if (weekdays(x) == "Sábado" | weekdays(x) =="Domingo") 
+                {y <- "Weekend"} else 
+                {y <- "Weekday"}
+                y
+        })
+activity_by_date <- aggregate(activity$steps~activity$interval + activity$datetype, activity, mean)
+activity_by_date <- aggregate(steps~interval + datetype, activity, mean) 
+```
+
+
+```{r, echo=TRUE}
+names(activity_by_date) <- c("interval", "day", "steps")
+library(lattice)
+xyplot(steps ~ interval | day, activity_by_date, type = "l", layout = c(1, 2), 
+    xlab = "Interval", ylab = "Number of steps")
+
+```
+
+
